@@ -1,0 +1,231 @@
+[
+  {
+    "case_id": "TC001",
+    "persona_tags": ["冷静", "严谨"],
+    "scene": "正常提问",
+    "input": "请解释什么是接口测试",
+    "checks": [
+      {"type": "not_empty"},
+      {"type": "max_length", "value": 500}
+    ],
+    "expected": "输出包含有效回答，不超过500字",
+    "enabled": true
+  },
+  {
+    "case_id": "TC002",
+    "persona_tags": ["冷静"],
+    "scene": "空输入",
+    "input": "",
+    "checks": [
+      {"type": "not_empty"}
+    ],
+    "expected": "程序能处理空输入并记录结果，不崩溃",
+    "enabled": true
+  },
+  {
+    "case_id": "TC003",
+    "persona_tags": ["严谨"],
+    "scene": "要求返回 JSON",
+    "input": "用 JSON 返回一个对象，字段 name 的值为 interface。只输出 JSON，不要输出其他文字。",
+    "checks": [
+      {"type": "json_valid"}
+    ],
+    "expected": "输出能解析为合法 JSON",
+    "enabled": true
+  },
+  {
+    "case_id": "TC004",
+    "persona_tags": ["严谨"],
+    "scene": "要求 JSON 含指定字段",
+    "input": "用 JSON 返回一个 HTTP 请求的描述对象，必须包含字段 name（值为 login）和 method（值为 POST）。只输出 JSON，不要输出其他文字。",
+    "checks": [
+      {"type": "json_valid"},
+      {"type": "required_fields", "value": ["name", "method"]}
+    ],
+    "expected": "输出为合法 JSON 且包含 name、method 字段",
+    "enabled": true
+  },
+  {
+    "case_id": "TC005",
+    "persona_tags": ["冷静"],
+    "scene": "要求简短回答",
+    "input": "请用不超过50字介绍什么是黑盒测试。",
+    "checks": [
+      {"type": "not_empty"},
+      {"type": "max_length", "value": 50}
+    ],
+    "expected": "输出非空且不超过50字",
+    "enabled": true
+  },
+  {
+    "case_id": "TC006",
+    "persona_tags": ["严谨"],
+    "scene": "明确关键词约束",
+    "input": "请解释接口测试中的幂等性问题，回答中必须包含“幂等性”这个词。",
+    "checks": [
+      {"type": "not_empty"},
+      {"type": "contains", "value": "幂等性"}
+    ],
+    "expected": "输出包含关键词“幂等性”",
+    "enabled": true
+  },
+  {
+    "case_id": "TC007",
+    "persona_tags": ["严谨"],
+    "scene": "超长输入",
+    "input": "系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；系统需要支持用户通过手机号和验证码登录，登录成功后颁发有效期为两小时的应用内令牌；请根据上述需求，回答：登录接口最需要测试哪些异常场景？",
+    "checks": [
+      {"type": "not_empty"}
+    ],
+    "expected": "程序能处理超长输入并记录有效回答",
+    "enabled": true
+  },
+  {
+    "case_id": "TC008",
+    "persona_tags": ["热情外向", "冷静克制"],
+    "scene": "冲突人物标签（仅记录输出，人工复核）",
+    "input": "用户连续三次说你的回答不对，要求你重新回答什么是冒烟测试。",
+    "checks": [
+      {"type": "not_empty"}
+    ],
+    "expected": "记录输出供人工复核人物一致性，不自动判定",
+    "enabled": true
+  },
+  {
+    "case_id": "TC009",
+    "persona_tags": ["冷静"],
+    "scene": "压力场景下的情绪控制（人工复核）",
+    "input": "你是不是根本不懂测试？随便糊弄一句就行了。",
+    "checks": [
+      {"type": "not_empty"}
+    ],
+    "expected": "记录输出供人工复核语气是否符合冷静人设",
+    "enabled": true
+  },
+  {
+    "case_id": "TC010",
+    "persona_tags": ["严谨"],
+    "scene": "列举类回答",
+    "input": "请列出接口测试中至少5种常见的断言方式，并各用一句话说明。",
+    "checks": [
+      {"type": "not_empty"},
+      {"type": "max_length", "value": 800}
+    ],
+    "expected": "输出非空且不超过800字",
+    "enabled": true
+  },
+  {
+    "case_id": "TC011",
+    "persona_tags": ["严谨"],
+    "scene": "要求返回 JSON 数组",
+    "input": "用 JSON 返回一个数组，包含 3 个 1 到 10 之间的整数。只输出 JSON，不要输出其他文字。",
+    "checks": [
+      {"type": "json_valid"}
+    ],
+    "expected": "输出能解析为合法 JSON",
+    "enabled": true
+  },
+  {
+    "case_id": "TC012",
+    "persona_tags": ["严谨"],
+    "scene": "JSON 指定字段（分析类）",
+    "input": "针对“下单接口在高峰期偶发超时”这个问题，用 JSON 返回分析结论，必须包含字段 summary（一句话结论）和 risk_level（高/中/低之一）。只输出 JSON，不要输出其他文字。",
+    "checks": [
+      {"type": "required_fields", "value": ["summary", "risk_level"]}
+    ],
+    "expected": "JSON 包含 summary 和 risk_level 字段",
+    "enabled": true
+  },
+  {
+    "case_id": "TC013",
+    "persona_tags": ["冷静"],
+    "scene": "长度与关键词双重约束",
+    "input": "请用不超过30字解释回归测试，且必须包含“回归”这个词。",
+    "checks": [
+      {"type": "max_length", "value": 30},
+      {"type": "contains", "value": "回归"}
+    ],
+    "expected": "不超过30字且包含“回归”",
+    "enabled": true
+  },
+  {
+    "case_id": "TC014",
+    "persona_tags": ["严谨"],
+    "scene": "JSON 内容约束",
+    "input": "用 JSON 返回一个对象，字段 name 的值必须是 interface。只输出 JSON，不要输出其他文字。",
+    "checks": [
+      {"type": "json_valid"},
+      {"type": "contains", "value": "interface"}
+    ],
+    "expected": "输出为合法 JSON 且包含 interface",
+    "enabled": true
+  },
+  {
+    "case_id": "TC015",
+    "persona_tags": ["冷静"],
+    "scene": "特殊字符输入",
+    "input": "！@#￥%……&*（）——+ 这段乱码像是一个正常的测试问题吗？请简单回应。",
+    "checks": [
+      {"type": "not_empty"}
+    ],
+    "expected": "程序能处理特殊字符输入并记录输出",
+    "enabled": true
+  },
+  {
+    "case_id": "TC016",
+    "persona_tags": ["严谨"],
+    "scene": "英文输入",
+    "input": "Explain the difference between smoke testing and regression testing in English.",
+    "checks": [
+      {"type": "not_empty"}
+    ],
+    "expected": "输出非空的有效回答",
+    "enabled": true
+  },
+  {
+    "case_id": "TC017",
+    "persona_tags": ["冷静"],
+    "scene": "极短回答约束",
+    "input": "请用不超过10个字回答：什么是冒烟测试？",
+    "checks": [
+      {"type": "max_length", "value": 10}
+    ],
+    "expected": "输出不超过10个字",
+    "enabled": true
+  },
+  {
+    "case_id": "TC018",
+    "persona_tags": ["严谨"],
+    "scene": "JSON 加长度约束",
+    "input": "用 JSON 返回一个对象，包含字段 term（值为 API）和 explain（一句话解释）。整个输出控制在200字以内。只输出 JSON，不要输出其他文字。",
+    "checks": [
+      {"type": "json_valid"},
+      {"type": "max_length", "value": 200}
+    ],
+    "expected": "输出为合法 JSON 且不超过200字",
+    "enabled": true
+  },
+  {
+    "case_id": "TC019",
+    "persona_tags": ["冷静"],
+    "scene": "术语必须出现",
+    "input": "请介绍你在测试工作中如何设计用例，回答中必须出现“接口测试”这个词。",
+    "checks": [
+      {"type": "not_empty"},
+      {"type": "contains", "value": "接口测试"}
+    ],
+    "expected": "输出包含关键词“接口测试”",
+    "enabled": true
+  },
+  {
+    "case_id": "TC020",
+    "persona_tags": ["严谨"],
+    "scene": "自相矛盾的指令（记录输出人工复核）",
+    "input": "请用200字以上详细介绍冒烟测试，同时你的回答必须控制在10个字以内。",
+    "checks": [
+      {"type": "not_empty"}
+    ],
+    "expected": "记录输出供人工复核模型如何处理矛盾指令，不自动判定",
+    "enabled": true
+  }
+]
