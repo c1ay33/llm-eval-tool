@@ -244,6 +244,37 @@ def test_runner_single_crash_does_not_stop_batch(tmp_path, capsys):
     assert "boom" in results[1]["detail"]
 
 
+def test_required_fields_failure_is_failed_not_error():
+    # 调用成功但 JSON 缺字段：规则检查不通过 → failed，不是 error
+    case = dict(CASE, checks=[{"type": "required_fields", "value": ["name"]}])
+    with mock.patch.object(api_client, "chat_completion", ok_client('{"other": 1}')):
+        result = runner.run_case(case, CONFIG, timeout=5, run_id="r1")
+    assert result["status"] == "failed"
+    assert result["error_type"] == "check_failed"
+    assert "name" in result["check_results"][0]["reason"]
+
+
+def test_empty_input_marked_invalid_input_without_calling_api(tmp_path):
+    # 空输入在客户端直接判定：不调用 API、不算模型失败、不占检查结果
+    empty_case = dict(CASE, case_id="TC_E", input="   ")
+    api_mock = mock.Mock(return_value=api_client.ApiResult(True, "回答", None, 200, "", 5))
+    with mock.patch.object(api_client, "chat_completion", api_mock):
+        _, results = runner.run_batch([empty_case, CASE], CONFIG,
+                                      timeout=5, out_dir=tmp_path)
+    assert results[0]["status"] == runner.INVALID_INPUT
+    assert results[0]["error_type"] is None
+    assert results[0]["latency_ms"] == 0
+    assert api_mock.call_count == 1  # 只有第二条非空用例真正调用了 API
+    assert results[1]["status"] == "passed"
+
+
+def test_manual_review_flag_carried_into_result(tmp_path):
+    manual_case = dict(CASE, case_id="TC_M", manual_review=True)
+    with mock.patch.object(api_client, "chat_completion", ok_client("回答")):
+        _, results = runner.run_batch([manual_case], CONFIG, timeout=5, out_dir=tmp_path)
+    assert results[0]["manual_review"] is True
+
+
 def test_run_batch_writes_results_jsonl(tmp_path):
     case_b = dict(CASE, case_id="TC_B", checks=[{"type": "max_length", "value": 3}])
     with mock.patch.object(api_client, "chat_completion", ok_client("一段比较长的回答")):

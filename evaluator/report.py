@@ -1,11 +1,16 @@
 """从结果列表生成 summary.md 汇总报告。
 
-统计数字全部来自 results 列表（与 results.jsonl 同源），保证报告与结果文件一致。
+统计原则：
+- 数字全部来自 results 列表（与 results.jsonl 同源），保证报告与结果文件一致
+- manual_review=true 的用例单独列出，不计入自动通过率——自动检查与人工评估分界
+- invalid_input（空输入未调 API）单独计数，不算模型失败也不算通过
 """
 
 import datetime
 import hashlib
 from pathlib import Path
+
+from evaluator.runner import INVALID_INPUT
 
 SUMMARY_FILENAME = "summary.md"
 
@@ -13,7 +18,12 @@ SUMMARY_FILENAME = "summary.md"
 INPUT_SNIPPET_CHARS = 50
 OUTPUT_SNIPPET_CHARS = 80
 
-STATUS_LABELS = {"passed": "passed", "failed": "failed", "error": "error"}
+STATUS_LABELS = {
+    "passed": "passed",
+    "failed": "failed",
+    "error": "error",
+    INVALID_INPUT: INVALID_INPUT,
+}
 
 
 def _md5_fingerprint(path):
@@ -29,20 +39,32 @@ def _snippet(text, max_chars):
     return text[:max_chars] + "…"
 
 
+def _is_manual(result):
+    return bool(result.get("manual_review"))
+
+
 def summarize(results):
-    """统计结果列表，返回报告所需的数字。"""
+    """统计结果列表，返回报告所需的数字。
+
+    passed/failed/error 及两类通过率只统计自动检查用例（剔除 manual_review），
+    invalid_input 与人工复核用例单独计数。
+    """
     total = len(results)
-    passed = sum(1 for r in results if r["status"] == "passed")
-    failed = sum(1 for r in results if r["status"] == "failed")
-    error = sum(1 for r in results if r["status"] == "error")
+    manual = sum(1 for r in results if _is_manual(r))
+    invalid_input = sum(1 for r in results if r["status"] == INVALID_INPUT)
+    auto = [r for r in results if not _is_manual(r)]
+
+    passed = sum(1 for r in auto if r["status"] == "passed")
+    failed = sum(1 for r in auto if r["status"] == "failed")
+    error = sum(1 for r in auto if r["status"] == "error")
 
     error_types = {}
-    for r in results:
+    for r in auto:
         if r["status"] == "error":
             error_types[r["error_type"]] = error_types.get(r["error_type"], 0) + 1
 
     check_failures = {}
-    for r in results:
+    for r in auto:
         if r["status"] == "failed":
             for check in r["check_results"]:
                 if not check["passed"]:
@@ -50,14 +72,16 @@ def summarize(results):
 
     return {
         "total": total,
+        "manual": manual,
+        "invalid_input": invalid_input,
         "passed": passed,
         "failed": failed,
         "error": error,
         "error_types": error_types,
         "check_failures": check_failures,
-        # 全量通过率：passed / 总数
-        "pass_rate_all": passed / total if total else 0.0,
-        # 输出质量通过率：剔除调用异常，只看真正拿到模型输出的用例
+        # 全量通过率：自动检查用例中 passed 的占比（error 是调用问题，也在分母里）
+        "pass_rate_all": passed / (passed + failed + error) if (passed + failed + error) else 0.0,
+        # 输出质量通过率：剔除调用异常，只看真正拿到模型输出且可自动判定的用例
         "pass_rate_quality": passed / (passed + failed) if (passed + failed) else 0.0,
     }
 
@@ -86,14 +110,17 @@ def render_summary(results, cases_path, run_id, elapsed_seconds, model):
         "| 指标 | 数量 |",
         "|---|---|",
         f"| 总用例数 | {stats['total']} |",
+        f"| 需人工复核（不计入自动通过率） | {stats['manual']} |",
+        f"| 未调用 API（空输入） | {stats['invalid_input']} |",
         f"| 通过 passed | {stats['passed']} |",
         f"| 输出失败 failed | {stats['failed']} |",
         f"| 调用异常 error | {stats['error']} |",
-        f"| 全量通过率 | {stats['pass_rate_all']:.1%} |",
+        f"| 全量通过率（自动检查用例） | {stats['pass_rate_all']:.1%} |",
         f"| 输出质量通过率（剔除调用异常） | {stats['pass_rate_quality']:.1%} |",
         "",
-        "> 调用异常（error）表示 API 层出问题（超时/HTTP 错误等），",
-        "> 不代表模型回答不合格，因此单独列出，不计入输出质量通过率。",
+        "> - 调用异常（error）表示 API 层出问题（超时/HTTP 错误等），不代表模型回答不合格；",
+        "> - 空输入（invalid_input）在客户端直接判定，未调用 API，不算模型失败也不算通过；",
+        "> - 人工复核用例的自动检查结果仅供参考，人物一致性等主观维度必须人工评分。",
         "",
     ]
 
@@ -113,8 +140,29 @@ def render_summary(results, cases_path, run_id, elapsed_seconds, model):
         lines += ["无"]
     lines += [""]
 
-    lines += ["## 典型 Bad Case", ""]
-    bad_cases = [r for r in results if r["status"] != "passed"]
+    lines += ["## 需人工复核用例（不计入自动通过率）", ""]
+    manual_results = [r for r in results if _is_manual(r)]
+    if manual_results:
+        lines += [
+            "| case_id | 场景 | 状态 | 输出摘要 |",
+            "|---|---|---|---|",
+        ]
+        for r in manual_results:
+            lines.append(
+                "| {case_id} | {scene} | {status} | {output} |".format(
+                    case_id=r["case_id"],
+                    scene=_snippet(r.get("scene", ""), 30),
+                    status=STATUS_LABELS.get(r["status"], r["status"]),
+                    output=_snippet(r["output"], OUTPUT_SNIPPET_CHARS) or "-",
+                )
+            )
+    else:
+        lines += ["无"]
+    lines += [""]
+
+    lines += ["## 典型 Bad Case（自动检查用例）", ""]
+    bad_cases = [r for r in results
+                 if not _is_manual(r) and r["status"] in ("failed", "error")]
     if bad_cases:
         lines += [
             "| case_id | 状态 | 失败原因 | 输入摘要 | 输出摘要 |",
@@ -132,7 +180,7 @@ def render_summary(results, cases_path, run_id, elapsed_seconds, model):
                 )
             )
     else:
-        lines += ["无，全部用例通过。"]
+        lines += ["无，自动检查用例全部通过。"]
     lines += [""]
     return "\n".join(lines)
 

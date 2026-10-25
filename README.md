@@ -20,8 +20,9 @@
 - 5 种检查规则：`not_empty` / `json_valid` / `required_fields` / `max_length` / `contains`
 - 兼容 OpenAI Chat Completions 风格 API（不绑定服务商，base_url/model/key 全部可配置）
 - 结果逐条写入 `results.jsonl`，生成 `summary.md` 汇总报告
+- 空输入在客户端直接判定为 `invalid_input`，不调用 API；人工复核用例（`manual_review`）单独统计，不计入自动通过率
 - 单条用例超时/异常不中断整批；每条结果即跑即落盘，中途退出不丢已跑数据
-- 45 个 pytest 测试，网络请求全部 mock，不依赖真实 API
+- 57 个 pytest 测试，覆盖加载校验、5 种检查、状态分类、异常路径（mock），不依赖真实 API
 
 **明确不做（后续版本计划）：**
 
@@ -77,11 +78,14 @@ python -m pytest -v
     {"type": "max_length", "value": 500}
   ],
   "expected": "输出包含有效回答，不超过500字",
+  "manual_review": false,
   "enabled": true
 }
 ```
 
-必填字段：`case_id`、`input`、`checks`；`persona_tags`、`scene`、`expected`、`enabled` 缺省时取默认值。`input` 允许空字符串（空输入本身就是一种测试场景）。`enabled=false` 的用例不会执行。
+必填字段：`case_id`、`input`、`checks`；`persona_tags`、`scene`、`expected`、`manual_review`、`enabled` 缺省时取默认值。`input` 允许空字符串（空输入本身就是一种测试场景）。`enabled=false` 的用例不会执行。
+
+**`manual_review: true` 用于主观评估用例**（如人物一致性、矛盾指令处理）：用例照常执行、输出照常记录，但不计入自动通过率，报告中单独列出供人工评分——这是自动检查与人工评估的边界。
 
 ### 检查类型
 
@@ -116,17 +120,22 @@ python -m pytest -v
 }
 ```
 
-**`summary.md`** —— 汇总报告：总用例数、通过数、输出失败数、调用异常数、按 `error_type` 和检查类型的失败统计、典型 Bad Case 列表（case_id、失败原因、输入/输出摘要）、运行时间、模型名、用例文件版本指纹。
+**`summary.md`** —— 汇总报告：总用例数、人工复核数（不计入自动通过率，单独列表）、空输入数、通过数、输出失败数、调用异常数、按 `error_type` 和检查类型的失败统计、典型 Bad Case 列表（case_id、失败原因、输入/输出摘要）、运行时间、模型名、用例文件版本指纹。
 
-### status 的三种取值（核心设计）
+### status 的四种取值（核心设计）
 
 | status | 含义 | error_type |
 |---|---|---|
 | `passed` | API 调用成功且全部检查通过 | `null` |
 | `failed` | API 调用成功，但输出未通过规则检查 | `check_failed` |
 | `error` | 调用层出问题，与模型输出质量无关 | `timeout` / `connection_error` / `request_error` / `http_error` / `invalid_response` / `unexpected_error` |
+| `invalid_input` | 空输入等客户端可直接判定的问题，不调用 API | `null` |
 
-**为什么必须区分 error 和 failed？** "API 超时"说明的是网络或服务问题，不是模型回答不合格。如果混为一谈，报告里"失败 10 条"就失去意义——你不知道该去修网络还是改提示词。所以报告给出两个通过率：全量通过率（passed/总数）和输出质量通过率（passed/(passed+failed)，剔除调用异常）。
+**为什么必须区分 error 和 failed？** "API 超时"说明的是网络或服务问题，不是模型回答不合格。如果混为一谈，报告里"失败 10 条"就失去意义——你不知道该去修网络还是改提示词。所以报告给出两个通过率：全量通过率（passed/自动检查用例总数）和输出质量通过率（passed/(passed+failed)，剔除调用异常）。
+
+**为什么空输入单独归类为 invalid_input 而不是 passed/failed？** 空输入发给模型，模型礼貌回应一句也算"通过"，但这测的是模型没崩，不是空输入处理正确。客户端在发请求前就能判定的问题，标记 `invalid_input`、不调用 API、不占通过率，报告语义才干净。
+
+**为什么检查规则必须和输入指令一致？** 如果输入没要求"不超过 500 字"，检查却卡 `max_length: 500`，模型超长被判 failed——这不是模型差，是用例设计问题。检查点与提示词对齐后，failed 才有质量含义。
 
 **HTTP 200 也不代表测试通过**——200 只说明调用成功，模型输出仍可能为空、超长、不是合法 JSON，这些由 checks 层判定为 failed。
 
@@ -160,7 +169,7 @@ llm-eval-tool/
 ## 当前限制
 
 1. **只支持一种 API 协议**：OpenAI Chat Completions 风格；多模型自动适配是后续计划。
-2. **只做客观规则检查**：回答质量、人物一致性等主观维度必须人工评分，工具只负责把输出和上下文完整记录下来。
+2. **只做客观规则检查**：回答质量、人物一致性等主观维度必须人工评分——工具通过 `manual_review` 用例把这类输出完整记录并在报告中单独列出，但不给分。
 3. **结果覆盖**：同一输出目录重复运行会覆盖 `results.jsonl` 和 `summary.md`；历史对比、SQLite 存储是 V0.3 计划。
 4. **顺序执行**：用例逐条串行调用，大批量跑批耗时与用例数成正比；并发执行是后续优化项。
 5. **`.env` 解析极简**：只支持 `KEY=VALUE`、`#` 注释和 `${VAR}` 引用**已存在的**环境变量（如密钥存放在 Windows 用户变量中，`.env` 里写 `LLM_API_KEY=${DEEPSEEK_API_KEY}`）；不支持在 `.env` 内定义变量、多行值等高级语法。

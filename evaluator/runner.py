@@ -1,10 +1,13 @@
 """批量执行测试用例。
 
 核心约定：
-- status 三分：passed / failed / error
+- status 取值：passed / failed / error / invalid_input
   - error：调用层出问题（超时、HTTP 错误、响应结构不对、意外异常），与模型输出质量无关
   - failed：调用成功，但输出没通过规则检查（error_type=check_failed）
   - passed：调用成功且全部检查通过
+  - invalid_input：空输入等客户端可直接判定的问题，不调用 API，不算模型失败
+- manual_review=true 的用例照常执行，但结果由人工复核，
+  报告中单独列出且不计入自动通过率——自动检查和人工评估边界清晰。
 - 单条用例抛出任何异常都不能中断整批，该条记为 error 继续跑下一条。
 - 每条结果立即写盘并 flush，中途退出已跑完的结果不丢。
 """
@@ -21,6 +24,9 @@ RESULTS_FILENAME = "results.jsonl"
 # 意外异常（bug、环境问题等）的 error_type，不属于调用层已知的四类错误
 UNEXPECTED_ERROR = "unexpected_error"
 
+# 空输入等无效输入的状态：不调用 API，不算模型失败
+INVALID_INPUT = "invalid_input"
+
 
 def _make_result(case, run_id, model, status, error_type, latency_ms,
                  output, check_results, detail):
@@ -29,6 +35,7 @@ def _make_result(case, run_id, model, status, error_type, latency_ms,
         "case_id": case["case_id"],
         "persona_tags": case.get("persona_tags", []),
         "scene": case.get("scene", ""),
+        "manual_review": case.get("manual_review", False),
         "model": model,
         "status": status,
         "error_type": error_type,
@@ -43,6 +50,11 @@ def _make_result(case, run_id, model, status, error_type, latency_ms,
 
 def run_case(case, config, timeout, run_id):
     """执行单条用例，返回结果字典。调用层异常已被 api_client 封装，不抛网络异常。"""
+    if not case["input"].strip():
+        # 空输入在客户端就能判定：调用 API 只会浪费一次请求，且结果没有评测意义
+        return _make_result(case, run_id, config["model"], INVALID_INPUT,
+                            None, 0, "", [], "空输入，未调用 API")
+
     api_result = api_client.chat_completion(
         case["input"],
         api_key=config["api_key"],

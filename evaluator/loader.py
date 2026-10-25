@@ -70,6 +70,8 @@ def _validate_case(case, index):
     if not isinstance(case.get("input"), str):
         # 注意：input 允许是空字符串（空输入用例），但不允许缺失或非字符串
         problems.append(f"{label} 的 input 必须是字符串")
+    if "manual_review" in case and not isinstance(case["manual_review"], bool):
+        problems.append(f"{label} 的 manual_review 必须是布尔值")
 
     checks = case.get("checks")
     if not isinstance(checks, list) or not checks:
@@ -100,6 +102,7 @@ def _normalize_case(case):
         "input": case["input"],
         "checks": case["checks"],
         "expected": case.get("expected", ""),
+        "manual_review": case.get("manual_review", False),
         "enabled": case.get("enabled", True),
     }
 

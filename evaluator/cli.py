@@ -102,6 +102,7 @@ def cmd_run(args):
     stats = report.summarize(results)
     print(f"\n完成 run_id={run_id}，耗时 {elapsed:.1f}s")
     print(f"通过 {stats['passed']} / 输出失败 {stats['failed']} / 调用异常 {stats['error']}"
+          f" / 人工复核 {stats['manual']} / 空输入未调用 {stats['invalid_input']}"
           f"（总 {stats['total']}）")
     print(f"结果文件: {Path(args.out) / runner.RESULTS_FILENAME}")
     print(f"汇总报告: {summary_path}")

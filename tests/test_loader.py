@@ -92,6 +92,25 @@ def test_max_length_check_requires_positive_int(tmp_path):
         load_cases(path)
 
 
+def test_manual_review_defaults_to_false(tmp_path):
+    path = write_cases_file(tmp_path, [VALID_CASE])
+    cases = load_cases(path)
+    assert cases[0]["manual_review"] is False
+
+
+def test_manual_review_true_is_preserved(tmp_path):
+    case = dict(VALID_CASE, manual_review=True)
+    path = write_cases_file(tmp_path, [case])
+    assert load_cases(path)[0]["manual_review"] is True
+
+
+def test_manual_review_must_be_bool(tmp_path):
+    case = dict(VALID_CASE, manual_review="yes")
+    path = write_cases_file(tmp_path, [case])
+    with pytest.raises(CaseLoadError, match="manual_review"):
+        load_cases(path)
+
+
 def test_multiple_problems_reported_together(tmp_path):
     bad1 = {"case_id": "", "input": "hi", "checks": [{"type": "not_empty"}]}
     bad2 = {"case_id": "TC002", "input": "hi", "checks": [{"type": "max_length"}]}
